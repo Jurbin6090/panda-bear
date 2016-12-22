@@ -1,6 +1,7 @@
 import express from 'express'
 import bodyParser from 'body-parser'
 
+
 import Bamboohr from 'node-bamboohr'
 
 import listEmployees from './model/get-employees'
@@ -12,6 +13,7 @@ import getMetaData from './service/meta-data'
 let app = express()
 
 app.use(bodyParser.json({'type': '*/*'}));
+
 
 let bamboo = new Bamboohr({apikey: '4c158bb7d0aa9245918fa8e9270504a41c997515', subdomain: 'cooksys'})
 
