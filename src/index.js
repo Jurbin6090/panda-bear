@@ -1,48 +1,77 @@
-import https from 'https'
-import {parseString} from 'xml2js'
+import express from 'express'
+import bodyParser from 'body-parser'
 
-https.get('https://[apikey]:x@api.bamboohr.com/api/gateway.php/cooksys/v1/employees/directory', res => {
+import Bamboohr from 'node-bamboohr'
 
-  res.setEncoding('utf8');
+import listEmployees from './model/get-employees'
+import getEmployee from './model/get-employee'
 
-  let rawData = '';
-  res.on('data', (chunk) => rawData += chunk);
-
-  res.on('end', () => {
-    try {
-      parseString(rawData, (err, result) => {
-
-        let employees = result.directory.employees
-
-        let emps = employees[0].employee.map(employee => {
+import getMetaData from './service/meta-data'
 
 
-          return {
+let app = express()
 
-            id: employee.$.id,
+app.use(bodyParser.json({'type': '*/*'}));
 
-            fields: employee.field.map(field => {
-
-              return {
-
-                id: field.$.id,
-                value: field._
-
-              }
-
-            })
-          }
-
-        })
-
-        emps.forEach(console.dir)
+let bamboo = new Bamboohr({apikey: '4c158bb7d0aa9245918fa8e9270504a41c997515', subdomain: 'cooksys'})
 
 
-      });
-    } catch (e) {
-      console.log(e.message);
+let respond = (promise, res) => promise.then(data => res.send(data)).then(() => res.end())
+
+let fieldList
+
+getMetaData()
+    .then(data => data.map(field => field.name).filter(data => data).reduce((l, r) => l ? `${l},${r}` : r))
+    .then(data => fieldList = data)
+
+app.get('/employee', (req, res) => respond(listEmployees(), res))
+app.get('/employee/:id', (req, res) => respond( getEmployee(req.params.id, fieldList) , res))
+
+app.get('/name/:id', (req, res) => {
+
+  bamboo.employee(req.params.id).get('firstName', 'lastName' , (err, employee) => {
+
+      if(err) {
+        res.status(500)
+        res.send(err)
+      } else {
+        res.send(employee.fields)
+      }
+
+    res.end()
+
+  })
+
+
+})
+
+
+app.post('/search', (req, res) => {
+
+  let query = req.body
+
+  console.dir(query)
+
+  bamboo.employees((err, employees) => {
+
+    if(err) {
+      res.status(500)
+      res.send(err)
+    } else {
+
+      let results = employees.map(emp => ({ "id": emp.id, ...emp.fields }))
+                .filter(emp => {
+                  return Object.keys(query)
+                      .map(key => emp[key] === query[key])
+                      .reduce((l, r) => l && r, true)
+                })
+
+      res.send(results)
     }
-  });
+
+    res.end()
+
+  })
 
 
 })
@@ -50,20 +79,10 @@ https.get('https://[apikey]:x@api.bamboohr.com/api/gateway.php/cooksys/v1/employ
 
 
 
+app.get('/meta', (req, res) => respond(getMetaData(), res))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+app.listen(5000)
 
 
 
