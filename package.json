@@ -1,0 +1,20 @@
+{
+  "name": "panda-bear",
+  "version": "1.0.0",
+  "description": "A consumer of bamboo",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "npm run build && node dist/index.js",
+    "build": "babel src -d dist",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "xml2js": "^0.4.17"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.18.0",
+    "babel-preset-es2015": "^6.18.0"
+  }
+}
