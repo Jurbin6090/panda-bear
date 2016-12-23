@@ -1,10 +1,7 @@
 import express from 'express'
 import bodyParser from 'body-parser'
-
 import infix from 'bind-infix'
-
 import Promise from 'bluebird'
-
 import Bamboohr from 'node-bamboohr'
 
 import getMetaData from './service/meta-data'
@@ -37,31 +34,44 @@ let sendAll = infix((req, data) => {
 
 let respond = call => (req, res) => call(req).then(res::sendAll).catch(res::error)
 
-let fieldList
+let fieldNames
 
-getMetaData()
-.then(data => data.map(field => field.name).filter(data => data).reduce((l, r) => l ? `${l},${r}` : r))
-.then(data => fieldList = data)
+let resetCache = () => getMetaData()
+  .then(data => data.map(field => field.name).filter(data => data))
+  .then(data => fieldNames = data)
+
+resetCache()
+setInterval(resetCache, 1000 * 60 * 60 * 24)
 
 
 app.get('/employee', respond(req => bamboo.employeesAsync().then(employees => employees.map(emp => ({"id": emp.id, ...emp.fields})))))
 
-app.get('/employee/:id', respond(req => bamboo.employee(req.params.id).getAsync(fieldList).then(employee => employee.fields)))
+app.get('/employee/:id', respond(req => bamboo.employee(req.params.id).getAsync(...fieldNames).then(employee => employee.fields)))
+
 
 app.post('/search', respond(req => {
 
   let query = req.body
 
-  return bamboo.employeesAsync()
-  .then(employees =>
+  let compares = Object.keys(query)
+    .map(key => ({
 
-    employees.map(emp => ({"id": emp.id, ...emp.fields}))
-    .filter(emp =>
-      Object.keys(query)
-      .map(key => emp[key] === query[key])
-      .reduce((l, r) => l && r, true)
+      key,
+      value: query[key].toLowerCase()
+
+    }))
+
+
+  return bamboo.employeesAsync()
+    .then(employees =>
+
+      employees.map(emp => ({"id": emp.id, ...emp.fields}))
+      .filter(emp =>
+        compares
+        .map(check => emp[check.key].toLowerCase().indexOf(check.value) > -1)
+        .reduce((l, r) => l && r, true)
+      )
     )
-  )
 
 }))
 
