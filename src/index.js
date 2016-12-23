@@ -1,14 +1,13 @@
 import express from 'express'
 import bodyParser from 'body-parser'
 
+import infix from 'bind-infix'
+
+import Promise from 'bluebird'
 
 import Bamboohr from 'node-bamboohr'
 
-import listEmployees from './model/get-employees'
-import getEmployee from './model/get-employee'
-
 import getMetaData from './service/meta-data'
-
 
 let app = express()
 
@@ -17,75 +16,54 @@ app.use(bodyParser.json({'type': '*/*'}));
 
 let bamboo = new Bamboohr({apikey: '4c158bb7d0aa9245918fa8e9270504a41c997515', subdomain: 'cooksys'})
 
+Promise.promisifyAll(Object.getPrototypeOf(bamboo))
+Promise.promisifyAll(Object.getPrototypeOf(bamboo.employee(0)))
 
-let respond = (promise, res) => promise.then(data => res.send(data)).then(() => res.end())
+
+let error = infix((res, err) => {
+
+  res.status(500)
+  res.send(err)
+  res.end()
+
+})
+
+let sendAll = infix((req, data) => {
+
+  req.send(data)
+  req.end()
+
+})
+
+let respond = call => (req, res) => call(req).then(res::sendAll).catch(res::error)
 
 let fieldList
 
 getMetaData()
-    .then(data => data.map(field => field.name).filter(data => data).reduce((l, r) => l ? `${l},${r}` : r))
-    .then(data => fieldList = data)
-
-app.get('/employee', (req, res) => respond(listEmployees(), res))
-app.get('/employee/:id', (req, res) => respond( getEmployee(req.params.id, fieldList) , res))
-
-app.get('/name/:id', (req, res) => {
-
-  bamboo.employee(req.params.id).get('firstName', 'lastName' , (err, employee) => {
-
-      if(err) {
-        res.status(500)
-        res.send(err)
-      } else {
-        res.send(employee.fields)
-      }
-
-    res.end()
-
-  })
+.then(data => data.map(field => field.name).filter(data => data).reduce((l, r) => l ? `${l},${r}` : r))
+.then(data => fieldList = data)
 
 
-})
+app.get('/employee', respond(req => bamboo.employeesAsync().then(employees => employees.map(emp => ({"id": emp.id, ...emp.fields})))))
 
+app.get('/employee/:id', respond(req => bamboo.employee(req.params.id).getAsync(fieldList).then(employee => employee.fields)))
 
-app.post('/search', (req, res) => {
+app.post('/search', respond(req => {
 
   let query = req.body
 
-  console.dir(query)
+  return bamboo.employeesAsync()
+  .then(employees =>
 
-  bamboo.employees((err, employees) => {
+    employees.map(emp => ({"id": emp.id, ...emp.fields}))
+    .filter(emp =>
+      Object.keys(query)
+      .map(key => emp[key] === query[key])
+      .reduce((l, r) => l && r, true)
+    )
+  )
 
-    if(err) {
-      res.status(500)
-      res.send(err)
-    } else {
-
-      let results = employees.map(emp => ({ "id": emp.id, ...emp.fields }))
-                .filter(emp => {
-                  return Object.keys(query)
-                      .map(key => emp[key] === query[key])
-                      .reduce((l, r) => l && r, true)
-                })
-
-      res.send(results)
-    }
-
-    res.end()
-
-  })
-
-
-})
-
-
-
-
-app.get('/meta', (req, res) => respond(getMetaData(), res))
+}))
 
 
 app.listen(5000)
-
-
-
-
