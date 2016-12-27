@@ -3,46 +3,52 @@ import Promise from 'bluebird'
 import {parseString} from 'xml2js'
 
 
-export default function getFields () {
+export default class BambooMeta {
 
-  return new Promise((resolve, reject) =>
+  constructor({apikey, subdomain}) {
 
-    https.get('https://4c158bb7d0aa9245918fa8e9270504a41c997515:x@api.bamboohr.com/api/gateway.php/cooksys/v1/meta/fields/', res => {
 
-      res.setEncoding('utf8');
+    this.getFields = () => {
 
-      let rawData = '';
-      res.on('data', (chunk) => rawData += chunk);
+      return new Promise((resolve, reject) =>
 
-      res.on('end', () => {
-        try {
-          parseString(rawData, (err, result) => {
+        https.get(`https://${apikey}:x@api.bamboohr.com/api/gateway.php/${subdomain}/v1/meta/fields/`, res => {
 
-            if(err) {
-              reject(err)
-              return
+          res.setEncoding('utf8');
+
+          let rawData = '';
+          res.on('data', (chunk) => rawData += chunk);
+
+          res.on('end', () => {
+            try {
+              parseString(rawData, (err, result) => {
+
+                if (err) {
+                  reject(err)
+                  return
+                }
+
+                let fields = result.fields.field
+
+                let emps = fields.map(field => {
+
+                  return {
+                    "label": field._,
+                    "name": field.$.alias,
+                    "type": field.$.type,
+                    "id": field.$.id
+                  }
+                })
+
+                resolve(emps)
+
+              });
+            } catch (e) {
+              reject(e)
             }
-
-            let fields = result.fields.field
-
-            let emps = fields.map(field => {
-
-              return {
-                "label": field._,
-                "name": field.$.alias,
-                "type": field.$.type,
-                "id": field.$.id
-              }
-            })
-
-            resolve(emps)
-
           });
-        } catch (e) {
-          reject(e)
-        }
-      });
-    })
-  )
+        })
+      )
+    }
+  }
 }
-

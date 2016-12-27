@@ -4,8 +4,9 @@
   "description": "A consumer of bamboo",
   "main": "src/index.js",
   "scripts": {
-    "start": "npm run build && node dist/index.js",
+    "start": "npm run build && npm run serve",
     "build": "babel src -d dist",
+    "serve": "node dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
