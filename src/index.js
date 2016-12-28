@@ -70,7 +70,6 @@ resetCache().then(() => {
 
     }))
 
-
     return bamboo.employeesAsync()
       .then(employees =>
 
