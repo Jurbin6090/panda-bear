@@ -10,7 +10,7 @@ let app = express()
 
 app.use(bodyParser.json({'type': '*/*'}));
 
-let config = {apikey: '4c158bb7d0aa9245918fa8e9270504a41c997515', subdomain: 'cooksys'}
+let config = {apikey: 'ec93d07b8f3224d78a2995e150ae7a9662a431fc', subdomain: 'cooksysdev'}
 
 let bamboo = new BambooHr(config)
 
